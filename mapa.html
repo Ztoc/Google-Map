@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mapa de Promociones</title>
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+      }
+
+      .header {
+        background-color: #f2f2f2;
+        color: white;
+        padding: 1px 15px;
+        font-size: 1.5em;
+        display: flex;
+        align-items: center;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 1000;
+      }
+
+      .header-title {
+        color: black;
+        font-weight: medium;
+        font-size: 0.9em;
+        margin-left: 0px;
+        flex: 1;
+      }
+
+      .filters {
+        background-color: #f2f2f2;
+        padding: 25px 35px;
+        display: flex;
+        justify-content: flex-start;
+        gap: 35px;
+      }
+
+      .filter-select {
+        padding: 10px 20px; /* Agranda el padding */
+        font-size: 0.7em; /* Agranda el texto */
+        border-radius: 8px;
+        border: 2px solid #dddddd;
+        position: relative;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-color: #dddddd;
+        background-image: url('data:image/svg+xml;utf8,<svg fill="orange" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+        background-repeat: no-repeat;
+        background-position-x: calc(100% - 10px); /* Ajusta la posición del icono */
+        background-position-y: center;
+        width: 185px; /* Ajusta el ancho del dropdown */
+      }
+
+      .filter-select:focus {
+        outline: none;
+        border-color: orangered;
+      }
+
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .close-button-container {
+        position: relative;
+        background-color: orangered;
+        padding: 5px 0;
+      }
+
+      .close-button {
+        position: absolute;
+        top: 0;
+        right: 0;
+        color: white;
+        font-size: 1.5em;
+        font-weight: bold;
+        cursor: pointer;
+        padding: 5px 10px;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 34px;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+      }
+
+      input:checked + .slider {
+        background-color: orangered;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(26px);
+      }
+
+      #map {
+        height: calc(100vh - 100px);
+        width: calc(100% - 400px);
+        float: right;
+        margin-top: 100px;
+      }
+
+      .sidebar {
+        height: calc(100vh - 100px);
+        width: 400px;
+        float: left;
+        overflow-y: auto;
+        margin-top: 100px;
+      }
+
+      h3 {
+        margin-left: 10px;
+      }
+
+      .location {
+        display: flex;
+        align-items: center;
+        background: #fff;
+        margin-bottom: 10px;
+        padding: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .location img {
+        width: 100px;
+        height: 100px;
+        margin-right: 10px;
+        border-radius: 5px;
+      }
+
+      .location-details {
+        color: black;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .location-name {
+        color: black;
+        font-size: 1.2em;
+        margin: 0 0 5px 0;
+      }
+
+      .stars {
+        color: orangered;
+        margin-right: 10px;
+      }
+
+      .instagram-icon {
+        width: 24px;
+        height: 24px;
+        background-image: url("https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png");
+        background-size: cover;
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 2px;
+        margin-right: 2px;
+      }
+
+      .price-range {
+        font-size: 0.9em;
+        color: black;
+      }
+
+      .discounts {
+        font-size: 0.7em;
+        color: black;
+        font-weight: bold;
+      }
+    </style>
+    <script
+      async
+      defer
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDXvrWDGvMqJDVE1ruIMWM2fhqKYH4RFNM&callback=initMap"
+    ></script>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-title">Los mejores lugares para disfrutar</div>
+      <div class="filters">
+        <select id="discount-filter" class="filter-select">
+          <option value="">% de descuento</option>
+          <option value="0.2">20%</option>
+          <option value="0.25">25%</option>
+          <option value="0.3">30%</option>
+          <option value="0.4">40%</option>
+        </select>
+        <select id="day-filter" class="filter-select">
+          <option value="">Día de la semana</option>
+          <option value="lunes">Lunes</option>
+          <option value="martes">Martes</option>
+          <option value="miercoles">Miércoles</option>
+          <option value="jueves">Jueves</option>
+          <option value="viernes">Viernes</option>
+          <option value="sabado">Sábado</option>
+          <option value="domingo">Domingo</option>
+        </select>
+        <select id="club-filter" class="filter-select">
+          <option value="">Tarjeta / Club</option>
+          <option value="BANCO CHILE">Banco de Chile</option>
+          <option value="BANCO RIPLEY">Banco Ripley</option>
+        </select>
+        <select id="category-filter" class="filter-select">
+          <option value="">Categoría</option>
+          <option value="restaurant">Restaurante</option>
+          <option value="bar">Bar</option>
+          <option value="cafeteria">Cafetería</option>
+        </select>
+        <select id="state-filter" class="filter-select">
+          <option value="">Comuna</option>
+          <option value="Santiago">Santiago</option>
+          <option value="Las Condes">Las Condes</option>
+        </select>
+        <label class="switch">
+          <input type="checkbox" id="geolocation-switch" />
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="sidebar">
+      <!-- Aquí se agregan las ubicaciones -->
+    </div>
+
+    <script>
+      function initMap() {
+        var map = new google.maps.Map(document.getElementById("map"), {
+          zoom: 12,
+          center: { lat: -33.4489, lng: -70.6693 },
+        });
+
+        var geolocationSwitch = document.getElementById("geolocation-switch");
+        var currentInfoWindow = null;
+
+        geolocationSwitch.addEventListener("change", function () {
+          if (this.checked) {
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                function (position) {
+                  var pos = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                  };
+
+                  map.setCenter(pos);
+                  map.setZoom(15); // Hacer zoom a la ubicación actual
+                },
+                function () {
+                  handleLocationError(true, map.getCenter());
+                }
+              );
+            } else {
+              handleLocationError(false, map.getCenter());
+            }
+          }
+        });
+
+        function handleLocationError(browserHasGeolocation, pos) {
+          var infoWindow = new google.maps.InfoWindow({ map: map });
+          infoWindow.setPosition(pos);
+          infoWindow.setContent(
+            browserHasGeolocation
+              ? "Error: The Geolocation service failed."
+              : "Error: Your browser doesn't support geolocation."
+          );
+        }
+
+        fetch("output.json")
+          .then((response) => response.json())
+          .then((locations) => {
+            locations.forEach((location) => {
+              const marker = new google.maps.Marker({
+                position: new google.maps.LatLng(
+                  location["google_maps_data.latitude"],
+                  location["google_maps_data.longitude"]
+                ),
+                map: map,
+                title: location["google_maps_data.name"],
+                icon: {
+                  url: "https://lukdescuentos.cl/wp-content/uploads/2024/05/PinPoint_black.png",
+                  scaledSize: new google.maps.Size(40, 40),
+                },
+              });
+
+              const stars =
+                "★".repeat(Math.floor(location["google_maps_data.rating"] || 0)) +
+                "☆".repeat(5 - Math.floor(location["google_maps_data.rating"] || 0));
+              let discountDays = "";
+              const days = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+              const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+              days.forEach((day, index) => {
+                if (location[day] && !isNaN(location[day])) {
+                  discountDays += `<div class="discounts">${dayNames[index]}: ${(location[day] * 100).toFixed(
+                    0
+                  )}%</div>`;
+                }
+              });
+
+              const infoContent = `
+             <div class="location">
+               <div class="close-button-container">
+                  <div class="close-button" onclick="closeInfoWindow()">X</div>
+               </div>
+               <img src="${
+                location["google_maps_data.photo"] || "https://lukdescuentos.cl/wp-content/uploads/2024/06/sin-imagen.png"
+                }" />
+              <div class="location-details">
+               <h4 class="location-name">${location["google_maps_data.name"]}</h4>
+                <div>
+                <span class="rating">${(location["google_maps_data.rating"] || 0).toFixed(1)}</span>
+                <span class="stars">${stars}</span>
+                <div class="instagram-icon"></div>
+            </div>
+            <div class="price-range">$$ - ${location["google_maps_data.type"]}</div>
+            <div class="discounts">${location["club_de_beneficios"]}</div>
+            ${discountDays}
+            <a href="${location["link_detalles"]}" target="_blank">Más detalles</a>
+        </div>
+    </div>
+`;
+
+              const infoWindow = new google.maps.InfoWindow({
+                content: infoContent,
+              });
+
+              function closeInfoWindow() {
+                if (currentInfoWindow) {
+                  currentInfoWindow.close();
+                }
+              }
+
+              marker.addListener("click", function () {
+                if (currentInfoWindow) {
+                  currentInfoWindow.close();
+                }
+                infoWindow.open(map, marker);
+                currentInfoWindow = infoWindow;
+              });
+
+              const sidebarContent = `
+                        <div class="location">
+                            <img src="${
+                              location["google_maps_data.photo"] ||
+                              "https://lukdescuentos.cl/wp-content/uploads/2024/06/sin-imagen.png"
+                            }" />
+                            <div class="location-details">
+                                <h4 class="location-name">${location["google_maps_data.name"]}</h4>
+                                <div>
+                                    <span class="rating">${(location["google_maps_data.rating"] || 0).toFixed(1)}</span>
+                                    <span class="stars">${stars}</span>
+                                    <div class="instagram-icon"></div>
+                                </div>
+                                <div class="price-range">$$ - ${location["google_maps_data.type"]}</div>
+                                <div class="discounts">${location["club_de_beneficios"]}</div>
+                                <a href="${location["link_detalles"]}" target="_blank">Más detalles</a>
+                            </div>
+                        </div>
+                    `;
+              document.querySelector(".sidebar").innerHTML += sidebarContent;
+            });
+          })
+          .catch((error) => {
+            console.error("Error loading the JSON:", error);
+            alert("Error loading the JSON: " + error.message);
+          });
+      }
+    </script>
+  </body>
+</html>
